@@ -48,7 +48,8 @@
   const state = { index: 0, answers: {}, categoryIntroShown: {} };
 
   if (!root) return;
-  renderIntro();
+  if (root.dataset.mode === "statistics") renderStatistics();
+  else renderIntro();
 
   function qSingle(id, category, prompt, options, correct, explanation, questionImage) {
     return {
@@ -110,7 +111,7 @@
           <p class="intro-credit">Das Quiz wurde von der Quizgruppe „Team Dunkelkammer“ der IG OMa zusammengestellt.</p>
           <div class="actions">
             <button class="button button-primary" type="button" data-action="start">Quiz starten</button>
-            <button class="button button-secondary" type="button" data-action="stats">Vor-Ort-Auswertung</button>
+            <a class="button button-secondary" href="./statistik/index.html">Vor-Ort-Auswertung</a>
           </div>
           <p class="note">Deine Antworten bleiben auf deinem Gerät. Die Vor-Ort-Ergebnisse der Teams kannst du separat ansehen.</p>
           <div class="category-preview" aria-label="Themenrunden">
@@ -129,41 +130,159 @@
       renderQuestion();
       scrollToRoot();
     });
-    root.querySelector("[data-action='stats']").addEventListener("click", () => {
-      renderStatistics();
-      scrollToRoot();
-    });
   }
 
-  function renderStatistics(teamSort = "score", questionSort = "number") {
-    const sortedTeams = [...stats.teams].sort((a, b) => teamSort === "name" ? a.name.localeCompare(b.name, "de") : b.score - a.score);
-    const questionRows = stats.questionCorrect.map((correct, index) => ({ id: index + 1, correct, rate: correct / stats.teams.length })).sort((a, b) => questionSort === "hard" ? a.rate - b.rate : questionSort === "easy" ? b.rate - a.rate : a.id - b.id);
+  function formatStat(value) {
+    return value.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+  }
+
+  function teamCategoryScore(team, category) {
+    return team.answers.slice(category.start - 1, category.end).reduce((sum, point) => sum + point, 0);
+  }
+
+  function rateClass(rate) {
+    if (rate >= 0.7) return "rate-high";
+    if (rate < 0.4) return "rate-low";
+    return "rate-medium";
+  }
+
+  function renderStatistics(teamSort = "score", questionSort = "number", categoryFilter = "") {
+    const teamCount = stats.teams.length;
+    const scores = stats.teams.map((team) => team.score).sort((a, b) => b - a);
+    const totalCorrect = stats.questionCorrect.reduce((total, correct) => total + correct, 0);
+    const totalPossible = teamCount * quiz.questionCount;
+    const median = (scores[Math.floor((teamCount - 1) / 2)] + scores[Math.floor(teamCount / 2)]) / 2;
+    const sortCategory = quiz.categories.find((category) => category.id === teamSort);
+    const sortedTeams = [...stats.teams].sort((a, b) => {
+      if (teamSort === "name") return a.name.localeCompare(b.name, "de");
+      if (sortCategory) return teamCategoryScore(b, sortCategory) - teamCategoryScore(a, sortCategory) || b.score - a.score;
+      return b.score - a.score;
+    });
+    const distribution = [...new Set(scores)].map((score) => ({ score, count: scores.filter((value) => value === score).length }));
+    const categories = stats.categories.map((category, index) => ({
+      ...category,
+      ...quiz.categories[index],
+      rate: category.correct / category.possible
+    })).sort((a, b) => b.rate - a.rate);
+    const highest = Math.max(...stats.questionCorrect);
+    const lowest = Math.min(...stats.questionCorrect);
+    const questionNames = (score) => quiz.questions.filter((q) => stats.questionCorrect[q.id - 1] === score).map((q) => q.id).join(", ");
+    const questionRows = quiz.questions
+      .filter((question) => !categoryFilter || question.category === categoryFilter)
+      .map((question) => ({ question, correct: stats.questionCorrect[question.id - 1] }))
+      .sort((a, b) => {
+        if (questionSort === "easy") return b.correct - a.correct;
+        if (questionSort === "hard") return a.correct - b.correct;
+        return a.question.id - b.question.id;
+      });
+
     root.innerHTML = `
       <section class="result-shell statistics-page">
         <header class="result-hero">
           <p class="kicker">Vor-Ort-Auswertung</p>
-          <h1>Ergebnisse der Quizteams</h1>
-          <p>Verglichen wurden ${stats.teams.length} Teams aus dem Quizabend.</p>
+          <h1>Statistik zum 75. Quiz im Bahnhof</h1>
+          <p>${teamCount} Teams · ${quiz.questionCount} Fragen · ${quiz.categories.length} Kategorien</p>
+          <nav class="stats-jump" aria-label="Statistikbereiche">
+            <a href="#punkteverteilung">Punkteverteilung</a>
+            <a href="#kategorien">Kategorien</a>
+            <a href="#fragen">Fragen</a>
+            <a href="#teams">Teams</a>
+          </nav>
         </header>
         <section class="result-section">
+          <h2>Der Quizabend in Zahlen</h2>
+          <dl class="stats-overview">
+            <div><dt>Durchschnitt pro Team</dt><dd>${formatStat(totalCorrect / teamCount)} / ${quiz.questionCount}</dd></div>
+            <div><dt>Median der Teampunkte</dt><dd>${formatStat(median)} / ${quiz.questionCount}</dd></div>
+            <div><dt>Niedrigste bis höchste Punktzahl</dt><dd>${scores.at(-1)}–${scores[0]}</dd></div>
+            <div><dt>Richtige Antworten insgesamt</dt><dd>${totalCorrect} von ${totalPossible} (${formatStat(totalCorrect / totalPossible * 100)} %)</dd></div>
+          </dl>
+          <p><strong>Am häufigsten richtig:</strong> Nr. ${questionNames(highest)} (${highest} von ${teamCount} Teams).</p>
+          <p><strong>Am seltensten richtig:</strong> Nr. ${questionNames(lowest)} (${lowest} von ${teamCount} Teams).</p>
+        </section>
+        <section class="result-section" id="punkteverteilung">
+          <h2>Punkteverteilung</h2>
+          <div class="stats-question-list">${distribution.map(({ score, count }) => `
+            <div class="stats-distribution"><span>${score} Punkte</span>
+              <div class="mini-bar" aria-hidden="true"><span style="width:${count / Math.max(...distribution.map((row) => row.count)) * 100}%"></span></div>
+              <strong>${count} ${count === 1 ? "Team" : "Teams"}</strong>
+            </div>`).join("")}</div>
+        </section>
+        <section class="result-section" id="kategorien">
+          <h2>Kategorien im Vergleich</h2>
+          <p>${escapeHtml(categories[0].name)} hatte die höchste Trefferquote (${formatStat(categories[0].rate * 100)} %).
+             ${escapeHtml(categories.at(-1).name)} hatte die niedrigste (${formatStat(categories.at(-1).rate * 100)} %).</p>
+          <div class="stats-category-grid">
+          ${categories.map((category) => {
+            const rates = stats.questionCorrect.slice(category.start - 1, category.end);
+            const easiest = rates.flatMap((n, i) => n === Math.max(...rates) ? [category.start + i] : []);
+            const hardest = rates.flatMap((n, i) => n === Math.min(...rates) ? [category.start + i] : []);
+            return `<article class="category-result stats-category-card ${rateClass(category.rate)}">
+              <h3>${escapeHtml(category.name)}</h3>
+              <p>Fragen ${category.start}–${category.end} · Ø ${formatStat(category.correct / teamCount)} von ${category.end - category.start + 1} Punkten</p>
+              <strong>${formatStat(category.rate * 100)} % richtig</strong>
+              <div class="mini-bar" aria-hidden="true"><span style="width:${category.rate * 100}%"></span></div>
+              <p>${category.correct} richtig · ${category.possible - category.correct} nicht richtig</p>
+              <p>Meiste Treffer: Nr. ${easiest.join(", ")} (${Math.max(...rates)}/${teamCount})<br>Wenigste Treffer: Nr. ${hardest.join(", ")} (${Math.min(...rates)}/${teamCount})</p>
+            </article>`;
+          }).join("")}</div>
+        </section>
+        <section class="result-section" id="fragen">
+          <h2>Alle ${quiz.questionCount} Fragen</h2>
+          <div class="stats-filters">
+            <label>Kategorie
+              <select data-stats-filter>
+                <option value="">Alle Kategorien</option>
+                ${quiz.categories.map((category) => `<option value="${category.id}" ${category.id === categoryFilter ? "selected" : ""}>${escapeHtml(category.name)}</option>`).join("")}
+              </select>
+            </label>
+            <label>Sortierung
+              <select data-question-sort>
+                <option value="number" ${questionSort === "number" ? "selected" : ""}>Nach Fragennummer</option>
+                <option value="easy" ${questionSort === "easy" ? "selected" : ""}>Meiste richtige zuerst</option>
+                <option value="hard" ${questionSort === "hard" ? "selected" : ""}>Meiste falsche zuerst</option>
+              </select>
+            </label>
+          </div>
+          <p class="note">${questionRows.length} Fragen angezeigt. „Nicht richtig“ umfasst alle Antworten ohne Punkt.</p>
+          <div class="stats-question-list">${questionRows.map(({ question, correct }) => `
+            <article class="stats-question-card ${rateClass(correct / teamCount)}">
+              <h3>Frage ${question.id} · ${escapeHtml(getCategory(question.category).name)}</h3>
+              <p class="stats-prompt">${escapeHtml(question.prompt)}</p>
+              <p><strong>${correct} richtig</strong> · ${teamCount - correct} nicht richtig · ${formatStat(correct / teamCount * 100)} % Trefferquote</p>
+              <div class="mini-bar" aria-hidden="true"><span style="width:${correct / teamCount * 100}%"></span></div>
+            </article>`).join("")}</div>
+        </section>
+        <section class="result-section" id="teams">
           <h2>Teamwertung</h2>
-          <div class="stats-controls"><button class="button button-secondary" data-sort="score">Nach Punkten</button><button class="button button-secondary" data-sort="name">Alphabetisch</button></div>
-          <div class="stats-table-wrap"><table class="stats-table"><thead><tr><th>Team</th><th>Punkte</th></tr></thead><tbody>${sortedTeams.map((team, i) => `<tr><td>${i + 1}. ${escapeHtml(team.name)}</td><td><strong>${team.score} / 30</strong></td></tr>`).join("")}</tbody></table></div>
+          <div class="stats-filters"><label>Teams sortieren
+            <select data-team-sort>
+              <option value="score" ${teamSort === "score" ? "selected" : ""}>Gesamtpunkte</option>
+              <option value="name" ${teamSort === "name" ? "selected" : ""}>Alphabetisch</option>
+              ${quiz.categories.map((category) => `<option value="${category.id}" ${teamSort === category.id ? "selected" : ""}>${escapeHtml(category.name)}</option>`).join("")}
+            </select>
+          </label></div>
+          <p class="note">Der Gesamtplatz richtet sich nach den Quizpunkten. Bei Gleichstand teilen sich Teams den Platz. Die Tabelle lässt sich horizontal scrollen.</p>
+          <div class="stats-table-wrap" tabindex="0" role="region" aria-label="Teamwertung mit Kategoriepunkten"><table class="stats-table stats-team-breakdown">
+            <thead><tr><th scope="col">Gesamtplatz</th><th scope="col">Team</th><th scope="col">Gesamt</th>${quiz.categories.map((category) => `<th scope="col">${escapeHtml(category.name)}</th>`).join("")}</tr></thead>
+            <tbody>${sortedTeams.map((team) => `<tr><td>${scores.indexOf(team.score) + 1}</td><th scope="row">${escapeHtml(team.name)}</th><td><strong>${team.score} / ${quiz.questionCount}</strong></td>
+              ${quiz.categories.map((category) => `<td>${teamCategoryScore(team, category)} / ${category.end - category.start + 1}</td>`).join("")}</tr>`).join("")}</tbody>
+          </table></div>
         </section>
-        <section class="result-section">
-          <h2>Kategorien</h2>
-          <div class="category-result-grid">${stats.categories.map((category) => `<article class="category-result"><span>${escapeHtml(category.name)}</span><strong>${category.correct} / ${category.possible}</strong><div class="mini-bar"><span style="width:${(category.correct / category.possible) * 100}%"></span></div></article>`).join("")}</div>
-        </section>
-        <section class="result-section">
-          <h2>Fragen nach Trefferquote</h2>
-          <div class="stats-controls"><button class="button button-secondary" data-question-sort="easy">Leichteste zuerst</button><button class="button button-secondary" data-question-sort="hard">Schwierigste zuerst</button></div>
-          <div class="stats-question-list">${questionRows.map((row) => `<div class="stats-question"><span>Frage ${row.id}</span><div class="mini-bar"><span style="width:${row.rate * 100}%"></span></div><strong>${row.correct} / ${stats.teams.length}</strong></div>`).join("")}</div>
-        </section>
-        <div class="result-actions"><button class="button button-primary" data-action="back-intro">Zum Quiz</button></div>
+        <div class="result-actions"><a class="button button-primary" href="../index.html">Zum Quiz</a></div>
       </section>`;
-    root.querySelectorAll("[data-sort]").forEach((button) => button.addEventListener("click", () => renderStatistics(button.dataset.sort, questionSort)));
-    root.querySelectorAll("[data-question-sort]").forEach((button) => button.addEventListener("click", () => renderStatistics(teamSort, button.dataset.questionSort)));
-    root.querySelector("[data-action='back-intro']").addEventListener("click", () => { renderIntro(); scrollToRoot(); });
+    root.querySelector("[data-team-sort]").addEventListener("change", (event) => {
+      renderStatistics(event.target.value, questionSort, categoryFilter);
+      root.querySelector("[data-team-sort]").focus({ preventScroll: true });
+    });
+    root.querySelector("[data-question-sort]").addEventListener("change", (event) => {
+      renderStatistics(teamSort, event.target.value, categoryFilter);
+      root.querySelector("[data-question-sort]").focus({ preventScroll: true });
+    });
+    root.querySelector("[data-stats-filter]").addEventListener("change", (event) => {
+      renderStatistics(teamSort, questionSort, event.target.value);
+      root.querySelector("[data-stats-filter]").focus({ preventScroll: true });
+    });
   }
 
   function renderQuestion() {
@@ -400,12 +519,13 @@
         ${teamComparisonMarkup(result.total)}
 
         <section class="result-section">
-          <h2>Deine Runden</h2>
+          <h2>Deine Kategorien im Vergleich</h2>
           <div class="category-result-grid">
             ${result.categories.map((category) => `
               <article class="category-result">
                 <span>${escapeHtml(category.name)}</span>
                 <strong>${category.score} / ${category.maximum}</strong>
+                <p>Vor Ort: Ø ${formatStat(category.average)} / ${category.maximum}</p>
                 <div class="mini-bar"><span style="width:${category.maximum ? (category.score / category.maximum) * 100 : 0}%"></span></div>
               </article>`).join("")}
           </div>
@@ -420,6 +540,7 @@
         </section>
 
         <div class="result-actions">
+          <a class="button button-secondary" href="./statistik/index.html">Gesamte Vor-Ort-Statistik</a>
           <button class="button button-primary" type="button" data-action="restart">Quiz noch einmal spielen</button>
         </div>
       </section>`;
@@ -440,11 +561,15 @@
     });
     const player = rows.find((team) => team.isPlayer);
     const tied = stats.teams.some((team) => team.score === score);
+    const average = stats.teams.reduce((sum, team) => sum + team.score, 0) / stats.teams.length;
+    const difference = score - average;
     return `
       <section class="result-section" aria-labelledby="team-comparison-title">
         <h2 id="team-comparison-title">Vergleich mit den Vor-Ort-Teams</h2>
         <p>Mit <strong>${score} von ${quiz.questionCount} Punkten</strong> wärst du auf
           <strong>${tied ? "dem geteilten Platz" : "Platz"} ${player.rank} von ${teams.length}</strong> gelandet, wenn du vor Ort mitgespielt hättest.</p>
+        <p>Vor Ort lag der Durchschnitt bei <strong>${formatStat(average)} Punkten</strong>.
+          ${difference === 0 ? "Du liegst genau im Durchschnitt." : `Dein Ergebnis liegt ${formatStat(Math.abs(difference))} Punkte ${difference > 0 ? "darüber" : "darunter"}.`}</p>
         <div class="stats-table-wrap">
           <table class="stats-table team-comparison-table" aria-label="Punktestand mit deinem Ergebnis">
             <thead><tr><th scope="col">Platz</th><th scope="col">Team</th><th scope="col">Punkte</th></tr></thead>
@@ -475,6 +600,7 @@
       return {
         name: category.name,
         score: items.filter((item) => item.correct).length,
+        average: stats.questionCorrect.slice(category.start - 1, category.end).reduce((sum, correct) => sum + correct, 0) / stats.teams.length,
         maximum: items.length
       };
     });
@@ -596,6 +722,7 @@
           </div>
           ${detail.question.type === "selfcheck" ? `<div class="answer-box resolution-selfcheck"><strong>Bewertungsregel</strong><p>${escapeHtml(detail.question.criteria)}</p></div>` : ""}
           ${detail.question.explanation ? `<p>${escapeHtml(detail.question.explanation)}</p>` : ""}
+          <p class="note">Vor Ort richtig: ${stats.questionCorrect[detail.question.id - 1]} von ${stats.teams.length} Teams.</p>
           ${detail.question.id === 24 ? '<p>Merkspruch aus der PowerPoint: Uri.</p><img class="solution-crest" src="assets/images/waltenhofen-wappen.png" alt="Wappen auf der Lösungsfolie">' : ""}
         </div>
       </details>`;

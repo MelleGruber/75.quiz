@@ -779,15 +779,101 @@ body {
   gap: 0.65rem;
 }
 
-.stats-question {
+.stats-distribution {
   display: grid;
-  grid-template-columns: 6rem minmax(0, 1fr) 4rem;
+  grid-template-columns: auto minmax(0, 1fr) 5rem;
   align-items: center;
   gap: 0.7rem;
 }
 
-.stats-question strong {
+.stats-distribution strong {
   text-align: right;
+}
+
+.stats-overview,
+.stats-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 0.85rem;
+}
+
+.stats-overview > div,
+.stats-question-card {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.stats-overview dd {
+  margin: 0.3rem 0 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.stats-category-card h3,
+.stats-question-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.stats-prompt {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.stats-jump {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.stats-jump a {
+  color: inherit;
+  font-weight: 750;
+}
+
+.statistics-page .result-section[id] {
+  scroll-margin-block-start: 5rem;
+}
+
+.statistics-page .rate-low .mini-bar span {
+  background: #a5423a;
+}
+
+.statistics-page .rate-medium .mini-bar span {
+  background: #a56c19;
+}
+
+.stats-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.stats-filters label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+  font-weight: 700;
+}
+
+.stats-filters select {
+  width: 100%;
+  padding: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: inherit;
+  font: inherit;
+}
+
+.stats-team-breakdown th,
+.stats-team-breakdown td {
+  min-width: 6rem;
 }
 
 .mini-bar {
