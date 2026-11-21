@@ -252,6 +252,7 @@
               ${questionVisual(question, "../")}
               <p><strong>${correct} richtig</strong> · ${teamCount - correct} nicht richtig · ${formatStat(correct / teamCount * 100)} % Trefferquote</p>
               <div class="mini-bar" aria-hidden="true"><span style="width:${correct / teamCount * 100}%"></span></div>
+              ${statsSolutionMarkup(question)}
             </article>`).join("")}</div>
         </section>
         <section class="result-section" id="teams">
@@ -712,6 +713,24 @@
     return question.answerLabel;
   }
 
+  function statsSolutionMarkup(question) {
+    const explanation = question.criteria || question.explanation;
+    return `
+      <details class="stats-solution">
+        <summary>Lösung zu Frage ${question.id} anzeigen</summary>
+        <div>
+          <p><strong>${escapeHtml(correctLabel(question))}</strong></p>
+          ${explanation ? `<p>${escapeHtml(explanation)}</p>` : ""}
+          ${solutionVisual(question, "../")}
+        </div>
+      </details>`;
+  }
+
+  function solutionVisual(question, assetPrefix = "") {
+    if (question.id !== 24) return "";
+    return `<p>Merkspruch aus der PowerPoint: Uri.</p><img class="solution-crest" src="${escapeAttr(assetPrefix + "assets/images/waltenhofen-wappen.png")}" alt="Wappen auf der Lösungsfolie">`;
+  }
+
   function solutionMarkup(detail) {
     return `
       <details class="solution ${detail.correct ? "is-correct" : "is-wrong"}">
@@ -725,7 +744,7 @@
           ${detail.question.type === "selfcheck" ? `<div class="answer-box resolution-selfcheck"><strong>Bewertungsregel</strong><p>${escapeHtml(detail.question.criteria)}</p></div>` : ""}
           ${detail.question.explanation ? `<p>${escapeHtml(detail.question.explanation)}</p>` : ""}
           <p class="note">Vor Ort richtig: ${stats.questionCorrect[detail.question.id - 1]} von ${stats.teams.length} Teams.</p>
-          ${detail.question.id === 24 ? '<p>Merkspruch aus der PowerPoint: Uri.</p><img class="solution-crest" src="assets/images/waltenhofen-wappen.png" alt="Wappen auf der Lösungsfolie">' : ""}
+          ${solutionVisual(detail.question)}
         </div>
       </details>`;
   }

@@ -822,6 +822,23 @@ body {
   overflow-wrap: anywhere;
 }
 
+.stats-solution {
+  margin-top: 0.8rem;
+  border-top: 1px solid var(--line);
+}
+
+.stats-solution summary {
+  padding-block: 0.7rem 0.2rem;
+  cursor: pointer;
+  font-weight: 750;
+  color: var(--orange-dark);
+}
+
+.stats-solution > div {
+  padding-inline-start: 1rem;
+  overflow-wrap: anywhere;
+}
+
 .stats-question-card .question-flag,
 .solution-body .question-flag {
   width: min(100%, 270px);
