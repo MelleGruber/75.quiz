@@ -822,6 +822,19 @@ body {
   overflow-wrap: anywhere;
 }
 
+.stats-question-card .question-flag,
+.solution-body .question-flag {
+  width: min(100%, 270px);
+  max-height: 160px;
+  margin: 0.8rem 0 1rem;
+}
+
+.stats-question-card .coat-of-arms,
+.solution-body .coat-of-arms {
+  width: min(100%, 340px);
+  margin-inline: 0;
+}
+
 .stats-jump {
   display: flex;
   flex-wrap: wrap;

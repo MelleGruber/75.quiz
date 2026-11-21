@@ -85,13 +85,13 @@
     return { id, category, type: "selfcheck", prompt, answerLabel, criteria };
   }
 
-  function questionVisual(question) {
+  function questionVisual(question, assetPrefix = "") {
     if (question.questionImage) {
-      return `<img class="question-flag" src="${escapeAttr(question.questionImage)}" alt="Gesuchte Flagge">`;
+      return `<img class="question-flag" src="${escapeAttr(assetPrefix + question.questionImage)}" alt="Gesuchte Flagge">`;
     }
     if (question.id !== 5) return "";
     return `<figure class="coat-of-arms">
-      <img src="assets/images/bayern-wappen.png" alt="Bayerisches Staatswappen mit vier markierten Feldern">
+      <img src="${escapeAttr(assetPrefix + "assets/images/bayern-wappen.png")}" alt="Bayerisches Staatswappen mit vier markierten Feldern">
       <span class="crest-a" aria-hidden="true">a</span><span class="crest-b" aria-hidden="true">b</span>
       <span class="crest-c" aria-hidden="true">c</span><span class="crest-d" aria-hidden="true">d</span>
     </figure>`;
@@ -249,6 +249,7 @@
             <article class="stats-question-card ${rateClass(correct / teamCount)}">
               <h3>Frage ${question.id} · ${escapeHtml(getCategory(question.category).name)}</h3>
               <p class="stats-prompt">${escapeHtml(question.prompt)}</p>
+              ${questionVisual(question, "../")}
               <p><strong>${correct} richtig</strong> · ${teamCount - correct} nicht richtig · ${formatStat(correct / teamCount * 100)} % Trefferquote</p>
               <div class="mini-bar" aria-hidden="true"><span style="width:${correct / teamCount * 100}%"></span></div>
             </article>`).join("")}</div>
@@ -716,6 +717,7 @@
       <details class="solution ${detail.correct ? "is-correct" : "is-wrong"}">
         <summary><span>${detail.correct ? "Richtig" : "Falsch"}</span> Frage ${detail.question.id}: ${escapeHtml(detail.question.prompt)}</summary>
         <div class="solution-body">
+          ${questionVisual(detail.question)}
           <div class="solution-columns">
             <div class="answer-box"><strong>Deine Antwort</strong>${escapeHtml(detail.submittedLabel)}</div>
             <div class="answer-box"><strong>Richtige Antwort</strong>${escapeHtml(detail.correctLabel)}</div>
