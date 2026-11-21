@@ -826,26 +826,7 @@ body {
 .stats-question-card > summary {
   padding: 0.55rem 0.75rem;
   cursor: pointer;
-}
-
-.stats-question-summary {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.2rem 0.65rem;
-  width: calc(100% - 1.35em);
-}
-
-.stats-question-category {
-  flex: 1 1 9rem;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-.stats-question-rate {
-  margin-inline-start: auto;
   font-weight: 800;
-  white-space: nowrap;
 }
 
 .stats-question-body {

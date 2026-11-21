@@ -247,15 +247,11 @@
           <p class="note">${questionRows.length} Fragen angezeigt. „Nicht richtig“ umfasst alle Antworten ohne Punkt.</p>
           <div class="stats-question-list">${questionRows.map(({ question, correct }) => `
             <details class="stats-question-card ${rateClass(correct / teamCount)}">
-              <summary><span class="stats-question-summary">
-                <strong>Frage ${question.id}</strong>
-                <span class="stats-question-category">${escapeHtml(getCategory(question.category).name)}</span>
-                <span class="stats-question-rate" aria-label="${formatStat(correct / teamCount * 100)} Prozent richtig">${formatStat(correct / teamCount * 100)} %</span>
-              </span></summary>
+              <summary>Frage ${question.id}</summary>
               <div class="stats-question-body">
                 <p class="stats-prompt">${escapeHtml(question.prompt)}</p>
                 ${questionVisual(question, "../")}
-                <p class="note">${correct} richtig · ${teamCount - correct} nicht richtig</p>
+                <p class="note">${escapeHtml(getCategory(question.category).name)} · ${correct} richtig · ${teamCount - correct} nicht richtig · ${formatStat(correct / teamCount * 100)} % Trefferquote</p>
                 <div class="mini-bar" aria-hidden="true"><span style="width:${correct / teamCount * 100}%"></span></div>
                 ${statsSolutionMarkup(question)}
               </div>
